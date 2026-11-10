@@ -1,9 +1,11 @@
 import { InstagramRecord } from '../types/instagram';
 
+export type ReorderMode = 'link' | 'username';
+
 /**
- * Clean and parse custom username list from user text input (lines or commas)
+ * Clean and parse custom items (links or usernames) from user text input
  */
-export function parseCustomUsernameList(rawText: string): string[] {
+export function parseCustomInputList(rawText: string): string[] {
   if (!rawText.trim()) return [];
 
   const rawItems = rawText.split(/[\r\n,]+/);
@@ -11,7 +13,7 @@ export function parseCustomUsernameList(rawText: string): string[] {
   const result: string[] = [];
 
   for (const item of rawItems) {
-    const cleaned = item.trim().replace(/^@+/, '');
+    const cleaned = item.trim();
     if (cleaned.length > 0) {
       const lower = cleaned.toLowerCase();
       if (!seen.has(lower)) {
@@ -22,6 +24,58 @@ export function parseCustomUsernameList(rawText: string): string[] {
   }
 
   return result;
+}
+
+/**
+ * Extract a robust Instagram post identifier from a URL or shortcode:
+ * Handles:
+ * - https://www.instagram.com/reel/DfKmPuASMEU/?igsh=123
+ * - https://www.instagram.com/p/DfKmPuASMEU/
+ * - instagram.com/reel/DfKmPuASMEU
+ * - DfKmPuASMEU (standalone shortcode)
+ * - Raw CDN URL (fallback)
+ */
+export function extractInstagramIdentifier(val: string): string {
+  if (!val) return '';
+  const s = String(val).trim();
+
+  // Match /reel/CODE, /p/CODE, /tv/CODE
+  const igMatch = s.match(/instagram\.com\/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/i);
+  if (igMatch) {
+    return igMatch[1];
+  }
+
+  // Standalone shortcode (typically 8-15 characters)
+  if (/^[A-Za-z0-9_-]{5,25}$/.test(s)) {
+    return s;
+  }
+
+  // Fallback: clean URL without query parameters, protocol, www, trailing slashes
+  return s
+    .split('?')[0]
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .replace(/\/+$/, '')
+    .toLowerCase();
+}
+
+/**
+ * Extract unique Instagram video links from existing parsed records
+ */
+export function getUniqueLinksFromRecords(records: InstagramRecord[]): string[] {
+  const seen = new Set<string>();
+  const list: string[] = [];
+  for (const r of records) {
+    const link = r.videoLink.trim();
+    if (link) {
+      const id = extractInstagramIdentifier(link);
+      if (id && !seen.has(id.toLowerCase())) {
+        seen.add(id.toLowerCase());
+        list.push(link);
+      }
+    }
+  }
+  return list;
 }
 
 /**
@@ -42,43 +96,67 @@ export function getUniqueUsernamesFromRecords(records: InstagramRecord[]): strin
 
 export interface ReorderResult {
   reordered: InstagramRecord[];
-  matchedUsernames: string[];
-  unmatchedUsernames: string[];
+  matchedItems: string[];
+  unmatchedItems: string[];
 }
 
 /**
- * Reorder records based on the user's custom username sequence.
- * - Posts belonging to custom usernames are placed first, in the exact custom order.
- * - If a custom username has multiple posts (duplicate usernames), they preserve original relative order.
- * - Posts not included in the custom list are placed at the end, preserving their original order.
+ * Reorder records based on custom Instagram links or usernames
  */
-export function applyCustomUsernameOrder(
+export function applyCustomOrder(
   records: InstagramRecord[],
-  customUsernames: string[]
+  items: string[],
+  mode: ReorderMode
 ): ReorderResult {
-  if (customUsernames.length === 0) {
+  if (items.length === 0) {
     return {
       reordered: records,
-      matchedUsernames: [],
-      unmatchedUsernames: []
+      matchedItems: [],
+      unmatchedItems: []
     };
   }
 
-  // Create a priority map: lowercase username -> rank index (0, 1, 2, ...)
+  // Build priority map
   const priorityMap = new Map<string, number>();
-  customUsernames.forEach((uname, idx) => {
-    priorityMap.set(uname.toLowerCase(), idx);
-  });
+
+  if (mode === 'link') {
+    items.forEach((item, idx) => {
+      const id = extractInstagramIdentifier(item).toLowerCase();
+      if (id) {
+        priorityMap.set(id, idx);
+      }
+    });
+  } else {
+    items.forEach((item, idx) => {
+      const cleanUname = item.trim().replace(/^@+/, '').toLowerCase();
+      if (cleanUname) {
+        priorityMap.set(cleanUname, idx);
+      }
+    });
+  }
 
   const matchedSet = new Set<string>();
 
-  // Attach original index to guarantee stable sorting for duplicates and unlisted rows
   const indexed = records.map((record, origIndex) => {
-    const cleanUname = record.username.trim().replace(/^@+/, '').toLowerCase();
-    const rank = priorityMap.has(cleanUname) ? priorityMap.get(cleanUname)! : -1;
-    if (rank !== -1) {
-      matchedSet.add(cleanUname);
+    let key = '';
+    if (mode === 'link') {
+      key = extractInstagramIdentifier(record.videoLink).toLowerCase();
+      // Check raw code as backup
+      if (!priorityMap.has(key) && record.raw['code']) {
+        const rawCodeKey = extractInstagramIdentifier(record.raw['code']).toLowerCase();
+        if (priorityMap.has(rawCodeKey)) {
+          key = rawCodeKey;
+        }
+      }
+    } else {
+      key = record.username.trim().replace(/^@+/, '').toLowerCase();
     }
+
+    const rank = priorityMap.has(key) ? priorityMap.get(key)! : -1;
+    if (rank !== -1) {
+      matchedSet.add(key);
+    }
+
     return {
       record,
       origIndex,
@@ -98,24 +176,33 @@ export function applyCustomUsernameOrder(
     if (a.rank !== -1) return -1;
     // Only b is in custom list
     if (b.rank !== -1) return 1;
-    // Neither is in custom list -> preserve original order
+    // Neither in custom list -> preserve original order
     return a.origIndex - b.origIndex;
   });
 
-  const matchedUsernames: string[] = [];
-  const unmatchedUsernames: string[] = [];
+  const matchedItems: string[] = [];
+  const unmatchedItems: string[] = [];
 
-  for (const uname of customUsernames) {
-    if (matchedSet.has(uname.toLowerCase())) {
-      matchedUsernames.push(uname);
+  for (const item of items) {
+    const key = mode === 'link'
+      ? extractInstagramIdentifier(item).toLowerCase()
+      : item.trim().replace(/^@+/, '').toLowerCase();
+
+    if (matchedSet.has(key)) {
+      matchedItems.push(item);
     } else {
-      unmatchedUsernames.push(uname);
+      unmatchedItems.push(item);
     }
   }
 
   return {
     reordered: indexed.map((item) => item.record),
-    matchedUsernames,
-    unmatchedUsernames
+    matchedItems,
+    unmatchedItems
   };
 }
+
+// Backward compatibility alias
+export const parseCustomUsernameList = parseCustomInputList;
+export const applyCustomUsernameOrder = (records: InstagramRecord[], usernames: string[]) =>
+  applyCustomOrder(records, usernames, 'username');

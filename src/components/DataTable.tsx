@@ -18,6 +18,7 @@ interface DataTableProps {
   records: InstagramRecord[];
   onOpenReorderModal?: () => void;
   customOrderActive?: boolean;
+  customOrderMode?: 'link' | 'username';
   customListCount?: number;
   onResetCustomOrder?: () => void;
 }
@@ -26,6 +27,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   records,
   onOpenReorderModal,
   customOrderActive,
+  customOrderMode = 'link',
   customListCount = 0,
   onResetCustomOrder
 }) => {
@@ -138,7 +140,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               }`}
             >
               <ArrowDownUp className="w-3.5 h-3.5 text-purple-600" />
-              <span>Reorder List</span>
+              <span>{customOrderActive ? `Reorder by ${customOrderMode === 'link' ? 'Link' : 'User'}` : 'Reorder List'}</span>
               {customOrderActive && (
                 <span className="ml-1 px-1.5 py-0.2 bg-purple-600 text-white rounded-full text-[10px]">
                   {customListCount}

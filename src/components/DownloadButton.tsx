@@ -8,12 +8,14 @@ interface DownloadButtonProps {
   records: InstagramRecord[];
   onUploadAnother: () => void;
   customOrderActive?: boolean;
+  customOrderMode?: 'link' | 'username';
 }
 
 export const DownloadButton: React.FC<DownloadButtonProps> = ({
   records,
   onUploadAnother,
-  customOrderActive
+  customOrderActive,
+  customOrderMode = 'link'
 }) => {
   const [downloadingFormat, setDownloadingFormat] = useState<'csv' | 'excel' | null>(null);
 
@@ -48,7 +50,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
             <h4 className="text-sm font-semibold text-slate-900">Standardized Export Ready</h4>
             {customOrderActive && (
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                Custom Order Applied
+                Custom {customOrderMode === 'link' ? 'Link' : 'Username'} Order Applied
               </span>
             )}
           </div>

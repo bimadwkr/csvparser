@@ -8,7 +8,7 @@ import { DownloadButton } from './components/DownloadButton';
 import { CustomReorderModal } from './components/CustomReorderModal';
 import { ColumnMapping, ParseResult } from './types/instagram';
 import { parseInstagramCSV, buildRecordsFromRows, calculateSummary } from './utils/csvParser';
-import { applyCustomUsernameOrder } from './utils/customReorder';
+import { ReorderMode, applyCustomOrder } from './utils/customReorder';
 import { ShieldCheck, Info } from 'lucide-react';
 
 export function App() {
@@ -18,8 +18,9 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Custom reorder state
-  const [customUsernameList, setCustomUsernameList] = useState<string[]>([]);
+  // Custom reorder state (supports 'link' or 'username')
+  const [customOrderItems, setCustomOrderItems] = useState<string[]>([]);
+  const [reorderMode, setReorderMode] = useState<ReorderMode>('link');
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   const handleFile = async (file: File) => {
@@ -30,7 +31,7 @@ export function App() {
       setParseResult(res);
       setCurrentMapping(res.mapping);
       setRawRows(res.records.map((r) => r.raw));
-      setCustomUsernameList([]); // reset custom order on new file
+      setCustomOrderItems([]); // reset custom order on new file
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to parse CSV file.';
       setUploadError(msg);
@@ -68,7 +69,7 @@ export function App() {
     setRawRows([]);
     setCurrentMapping(null);
     setUploadError(null);
-    setCustomUsernameList([]);
+    setCustomOrderItems([]);
     setIsReorderModalOpen(false);
   };
 
@@ -78,22 +79,23 @@ export function App() {
     return buildRecordsFromRows(rawRows, currentMapping);
   }, [rawRows, currentMapping, parseResult]);
 
-  // Apply custom username order if defined
+  // Apply custom order (by link or by username) if defined
   const activeRecords = useMemo(() => {
-    if (customUsernameList.length === 0) return baseRecords;
-    return applyCustomUsernameOrder(baseRecords, customUsernameList).reordered;
-  }, [baseRecords, customUsernameList]);
+    if (customOrderItems.length === 0) return baseRecords;
+    return applyCustomOrder(baseRecords, customOrderItems, reorderMode).reordered;
+  }, [baseRecords, customOrderItems, reorderMode]);
 
   const activeSummary = useMemo(() => {
     return calculateSummary(activeRecords);
   }, [activeRecords]);
 
-  const handleApplyCustomOrder = (newList: string[]) => {
-    setCustomUsernameList(newList);
+  const handleApplyCustomOrder = (newItems: string[], newMode: ReorderMode) => {
+    setCustomOrderItems(newItems);
+    setReorderMode(newMode);
   };
 
   const handleResetCustomOrder = () => {
-    setCustomUsernameList([]);
+    setCustomOrderItems([]);
   };
 
   return (
@@ -157,13 +159,14 @@ export function App() {
               />
             </section>
 
-            {/* Data Table with Reorder Feature */}
+            {/* Data Table with Reorder Feature (by Link or Username) */}
             <section aria-label="Data Table Section">
               <DataTable
                 records={activeRecords}
                 onOpenReorderModal={() => setIsReorderModalOpen(true)}
-                customOrderActive={customUsernameList.length > 0}
-                customListCount={customUsernameList.length}
+                customOrderActive={customOrderItems.length > 0}
+                customOrderMode={reorderMode}
+                customListCount={customOrderItems.length}
                 onResetCustomOrder={handleResetCustomOrder}
               />
             </section>
@@ -173,20 +176,22 @@ export function App() {
               <DownloadButton
                 records={activeRecords}
                 onUploadAnother={handleReset}
-                customOrderActive={customUsernameList.length > 0}
+                customOrderActive={customOrderItems.length > 0}
+                customOrderMode={reorderMode}
               />
             </section>
           </div>
         )}
       </main>
 
-      {/* Custom Reorder Modal */}
+      {/* Custom Reorder Modal (Link or Username) */}
       {parseResult && (
         <CustomReorderModal
           isOpen={isReorderModalOpen}
           onClose={() => setIsReorderModalOpen(false)}
           records={baseRecords}
-          activeCustomList={customUsernameList}
+          activeItems={customOrderItems}
+          activeMode={reorderMode}
           onApplyCustomOrder={handleApplyCustomOrder}
         />
       )}
@@ -194,7 +199,7 @@ export function App() {
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-6 mt-12 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4">
-          Instagram CSV Metrics Parser &bull; Export to CSV & Excel (.xlsx) &bull; Custom Username Reordering
+          Instagram CSV Metrics Parser &bull; Export to CSV & Excel (.xlsx) &bull; Reorder by Instagram Link or Username
         </div>
       </footer>
     </div>
