@@ -4,6 +4,7 @@ import { formatDateISO } from './formatters';
 
 export const EXCEL_OUTPUT_COLUMNS = [
   'Username Instagram',
+  'Link Video Instagram',
   'View',
   'Like',
   'Comment',
@@ -15,9 +16,9 @@ export const EXCEL_OUTPUT_COLUMNS = [
  * Trigger download of the cleaned data as a native Microsoft Excel (.xlsx) file
  */
 export function downloadExcelFile(records: InstagramRecord[], customFilename?: string): void {
-  // Format each record according to the exact required 6 columns
   const data = records.map((record) => ({
     'Username Instagram': record.username,
+    'Link Video Instagram': record.videoLink || '',
     'View': record.view !== null ? record.view : '',
     'Like': record.like !== null ? record.like : '',
     'Comment': record.comment !== null ? record.comment : '',
@@ -31,12 +32,13 @@ export function downloadExcelFile(records: InstagramRecord[], customFilename?: s
 
   // Set nice column widths for Excel
   worksheet['!cols'] = [
-    { wch: 25 }, // Username Instagram
-    { wch: 15 }, // View
-    { wch: 15 }, // Like
-    { wch: 15 }, // Comment
-    { wch: 15 }, // Share
-    { wch: 15 }  // Bookmarks
+    { wch: 24 }, // Username Instagram
+    { wch: 45 }, // Link Video Instagram
+    { wch: 14 }, // View
+    { wch: 14 }, // Like
+    { wch: 14 }, // Comment
+    { wch: 14 }, // Share
+    { wch: 14 }  // Bookmarks
   ];
 
   const workbook = XLSX.utils.book_new();

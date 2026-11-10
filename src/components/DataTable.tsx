@@ -8,7 +8,8 @@ import {
   ChevronRight,
   Database,
   ArrowDownUp,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { InstagramRecord, MetricKey, SortDirection, SortField } from '../types/instagram';
 import { formatMetricNumber } from '../utils/formatters';
@@ -56,7 +57,11 @@ export const DataTable: React.FC<DataTableProps> = ({
     // Filter by username search term
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase();
-      result = result.filter((r) => r.username.toLowerCase().includes(term));
+      result = result.filter(
+        (r) =>
+          r.username.toLowerCase().includes(term) ||
+          r.videoLink.toLowerCase().includes(term)
+      );
     }
 
     // Sort
@@ -66,9 +71,9 @@ export const DataTable: React.FC<DataTableProps> = ({
         const valB = b[sortField];
 
         // Null/missing values always placed at the end
-        if (valA === null && valB === null) return 0;
-        if (valA === null) return 1;
-        if (valB === null) return -1;
+        if ((valA === null || valA === '') && (valB === null || valB === '')) return 0;
+        if (valA === null || valA === '') return 1;
+        if (valB === null || valB === '') return -1;
 
         if (typeof valA === 'string' && typeof valB === 'string') {
           return sortDirection === 'asc'
@@ -112,7 +117,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search username..."
+              placeholder="Search username or link..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -188,16 +193,26 @@ export const DataTable: React.FC<DataTableProps> = ({
               <th className="py-3 px-4 w-12 text-center text-slate-400 font-normal">#</th>
               <th
                 onClick={() => handleSort('username')}
-                className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group select-none"
+                className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group select-none min-w-[160px]"
               >
                 <div className="flex items-center">
                   <span>Username Instagram</span>
                   {renderSortIcon('username')}
                 </div>
               </th>
+              {/* Kolom Link Video Instagram right next to Username */}
+              <th
+                onClick={() => handleSort('videoLink')}
+                className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group select-none min-w-[200px]"
+              >
+                <div className="flex items-center">
+                  <span>Link Video Instagram</span>
+                  {renderSortIcon('videoLink')}
+                </div>
+              </th>
               <th
                 onClick={() => handleSort('view')}
-                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none"
+                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none min-w-[90px]"
               >
                 <div className="flex items-center justify-end">
                   <span>View</span>
@@ -206,7 +221,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               </th>
               <th
                 onClick={() => handleSort('like')}
-                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none"
+                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none min-w-[90px]"
               >
                 <div className="flex items-center justify-end">
                   <span>Like</span>
@@ -215,7 +230,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               </th>
               <th
                 onClick={() => handleSort('comment')}
-                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none"
+                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none min-w-[90px]"
               >
                 <div className="flex items-center justify-end">
                   <span>Comment</span>
@@ -224,7 +239,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               </th>
               <th
                 onClick={() => handleSort('share')}
-                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none"
+                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none min-w-[90px]"
               >
                 <div className="flex items-center justify-end">
                   <span>Share</span>
@@ -233,7 +248,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               </th>
               <th
                 onClick={() => handleSort('bookmarks')}
-                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none"
+                className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100/70 transition-colors group select-none min-w-[100px]"
               >
                 <div className="flex items-center justify-end">
                   <span>Bookmarks</span>
@@ -254,12 +269,29 @@ export const DataTable: React.FC<DataTableProps> = ({
                     <td className="py-3 px-4 text-center text-xs text-slate-400 font-mono">
                       {globalIndex}
                     </td>
-                    <td className="py-3 px-4 font-medium text-slate-900 flex items-center gap-2">
-                      <span className="truncate max-w-[220px]" title={record.username}>
+                    <td className="py-3 px-4 font-medium text-slate-900">
+                      <span className="truncate max-w-[200px] block" title={record.username}>
                         {record.username ? `@${record.username.replace(/^@/, '')}` : (
                           <span className="text-slate-300 italic">Empty username</span>
                         )}
                       </span>
+                    </td>
+                    {/* Link Video Instagram Cell */}
+                    <td className="py-3 px-4">
+                      {record.videoLink ? (
+                        <a
+                          href={record.videoLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-rose-600 hover:text-rose-700 font-medium hover:underline max-w-[220px] truncate"
+                          title={record.videoLink}
+                        >
+                          <span className="truncate">{record.videoLink}</span>
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                        </a>
+                      ) : (
+                        <span className="text-slate-300 text-xs italic">-</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-800">
                       {record.view !== null ? (
@@ -301,7 +333,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               })
             ) : (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-400">
+                <td colSpan={8} className="py-12 text-center text-slate-400">
                   <div className="flex flex-col items-center justify-center">
                     <Database className="w-8 h-8 text-slate-300 mb-2" />
                     <p className="text-sm font-medium text-slate-600">No matching records found</p>

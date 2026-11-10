@@ -116,7 +116,7 @@ export function App() {
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto text-xs text-slate-400 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
             <Info className="w-3.5 h-3.5 text-rose-400" />
-            <span>Output: Username, View, Like, Comment, Share, Bookmarks</span>
+            <span>Output: Username, Link Video, View, Like, Comment, Share, Bookmarks</span>
           </div>
         </div>
 

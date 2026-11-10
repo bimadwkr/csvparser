@@ -4,6 +4,7 @@ import { formatDateISO } from './formatters';
 
 export const CSV_OUTPUT_COLUMNS = [
   'Username Instagram',
+  'Link Video Instagram',
   'View',
   'Like',
   'Comment',
@@ -15,9 +16,9 @@ export const CSV_OUTPUT_COLUMNS = [
  * Generate standardized CSV content with UTF-8 BOM
  */
 export function generateCleanCSV(records: InstagramRecord[]): string {
-  // Format each record according to the exact required 6 columns
   const rows = records.map((record) => ({
     'Username Instagram': record.username,
+    'Link Video Instagram': record.videoLink || '',
     'View': record.view !== null ? record.view : '',
     'Like': record.like !== null ? record.like : '',
     'Comment': record.comment !== null ? record.comment : '',

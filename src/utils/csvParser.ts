@@ -27,6 +27,27 @@ export function parseMetricValue(value: unknown): number | null {
 }
 
 /**
+ * Safely format an Instagram video or post URL
+ */
+export function formatVideoLink(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const s = String(value).trim();
+  if (!s) return '';
+
+  // Already a full URL
+  if (s.startsWith('http://') || s.startsWith('https://')) {
+    return s;
+  }
+
+  // If it's an Instagram shortcode (e.g. DfKmPuASMEU)
+  if (/^[A-Za-z0-9_-]{5,20}$/.test(s)) {
+    return `https://www.instagram.com/reel/${s}/`;
+  }
+
+  return s;
+}
+
+/**
  * Build records array from parsed rows and active column mapping
  */
 export function buildRecordsFromRows(
@@ -37,6 +58,9 @@ export function buildRecordsFromRows(
     const usernameRaw = mapping.username ? row[mapping.username] : '';
     const username = usernameRaw !== undefined && usernameRaw !== null ? String(usernameRaw) : '';
 
+    const videoLinkRaw = mapping.videoLink ? row[mapping.videoLink] : '';
+    const videoLink = formatVideoLink(videoLinkRaw);
+
     const viewRaw = mapping.view ? row[mapping.view] : undefined;
     const likeRaw = mapping.like ? row[mapping.like] : undefined;
     const commentRaw = mapping.comment ? row[mapping.comment] : undefined;
@@ -46,6 +70,7 @@ export function buildRecordsFromRows(
     return {
       id: `row-${index + 1}`,
       username,
+      videoLink,
       view: parseMetricValue(viewRaw),
       like: parseMetricValue(likeRaw),
       comment: parseMetricValue(commentRaw),
@@ -71,10 +96,14 @@ export function calculateSummary(records: InstagramRecord[]): MetricSummary {
     likeAvailableCount: 0,
     commentAvailableCount: 0,
     shareAvailableCount: 0,
-    bookmarkAvailableCount: 0
+    bookmarkAvailableCount: 0,
+    videoLinkCount: 0
   };
 
   for (const record of records) {
+    if (record.videoLink) {
+      summary.videoLinkCount++;
+    }
     if (record.view !== null) {
       summary.totalViews += record.view;
       summary.viewAvailableCount++;
@@ -111,7 +140,6 @@ export function parseInstagramCSV(file: File): Promise<ParseResult> {
       transformHeader: (header) => header.trim(),
       complete: (results) => {
         if (results.errors && results.errors.length > 0) {
-          // If fatal error or empty
           if (!results.data || results.data.length === 0) {
             reject(new Error(results.errors[0].message || 'Failed to parse CSV file.'));
             return;

@@ -18,6 +18,24 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
     ]
   },
   {
+    key: 'videoLink',
+    label: 'Link Video Instagram',
+    outputName: 'Link Video Instagram',
+    aliases: [
+      'code',
+      'url',
+      'post_url',
+      'posturl',
+      'permalink',
+      'video_url',
+      'videourl',
+      'shortcode',
+      'link',
+      'post_link',
+      'instagram_url'
+    ]
+  },
+  {
     key: 'view',
     label: 'View',
     outputName: 'View',
@@ -95,7 +113,7 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
   }
 ];
 
-// Disallowed substring patterns to avoid false positives (e.g. follower counts, flags, settings)
+// Disallowed patterns for numeric metrics and username to avoid false positives
 const DISALLOWED_PATTERNS: RegExp[] = [
   /follower/i,
   /following/i,
@@ -107,8 +125,6 @@ const DISALLOWED_PATTERNS: RegExp[] = [
   /can_/i,
   /has_/i,
   /is_/i,
-  /url/i,
-  /preview/i,
   /duration/i,
   /subtitle/i,
   /title/i
@@ -130,6 +146,7 @@ export function detectColumnMapping(headers: string[]): {
 } {
   const mapping: ColumnMapping = {
     username: '',
+    videoLink: '',
     view: '',
     like: '',
     comment: '',
@@ -158,7 +175,6 @@ export function detectColumnMapping(headers: string[]): {
       for (const alias of def.aliases) {
         const normAlias = normalizeColumnName(alias);
         const found = headers.find((h) => {
-          // Check disallowed patterns first
           if (DISALLOWED_PATTERNS.some((p) => p.test(h))) return false;
           return normalizeColumnName(h) === normAlias;
         });
@@ -189,7 +205,7 @@ export function detectColumnMapping(headers: string[]): {
     if (matchedHeader) {
       mapping[def.key] = matchedHeader;
     } else {
-      warnings.push(`Metric "${def.label}" was not automatically detected.`);
+      warnings.push(`Column "${def.label}" was not automatically detected.`);
     }
   }
 

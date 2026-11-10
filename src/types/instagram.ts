@@ -1,8 +1,9 @@
-export type MetricKey = 'username' | 'view' | 'like' | 'comment' | 'share' | 'bookmarks';
+export type MetricKey = 'username' | 'videoLink' | 'view' | 'like' | 'comment' | 'share' | 'bookmarks';
 
 export interface InstagramRecord {
   id: string;
   username: string;
+  videoLink: string;
   view: number | null;
   like: number | null;
   comment: number | null;
@@ -33,6 +34,7 @@ export interface MetricSummary {
   commentAvailableCount: number;
   shareAvailableCount: number;
   bookmarkAvailableCount: number;
+  videoLinkCount: number;
 }
 
 export interface ParseResult {
